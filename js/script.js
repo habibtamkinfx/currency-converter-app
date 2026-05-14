@@ -10,38 +10,58 @@ window.addEventListener('load', populateCurrencies);
 formEl.addEventListener('submit', handleSubmit);
 swapButtonEl.addEventListener('click', swapCurrencies);
 
-async function populateCurrencies() {
-  const response = await fetch(
-    'https://api.exchangerate-api.com/v4/latest/USD',
-  );
-  const data = await response.json();
-  const currencies = Object.keys(data.rates);
-
-  currencies.forEach((currency) => {
-    const option1 = document.createElement('option');
-    option1.value = currency;
-    option1.textContent = currency;
-    fromCurrencyEl.appendChild(option1);
-
-    const option2 = document.createElement('option');
-    option2.value = currency;
-    option2.textContent = currency;
-    toCurrencyEl.appendChild(option2);
-  });
+function createCurrencyOption(selectEl, currency) {
+  const optionEl = document.createElement('option');
+  optionEl.value = currency;
+  optionEl.textContent = currency;
+  selectEl.appendChild(optionEl);
 }
 
-async function handleSubmit(e) {
-  e.preventDefault();
-  const amount = Number(amountEl.value.trim());
-  if (!amount) {
+async function populateCurrencies() {
+  amountEl.focus();
+  try {
+    const response = await fetch(
+      'https://api.exchangerate-api.com/v4/latest/USD',
+    );
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    const data = await response.json();
+    const currencies = Object.keys(data.rates);
+    fromCurrencyEl.innerHTML = '';
+    toCurrencyEl.innerHTML = '';
+    currencies.forEach((currency) => {
+      createCurrencyOption(fromCurrencyEl, currency);
+      createCurrencyOption(toCurrencyEl, currency);
+    });
+    fromCurrencyEl.value = 'USD';
+    toCurrencyEl.value = 'AFN';
+  } catch (error) {
+    resultEl.innerHTML = `Error: ${error.message}`;
+  }
+}
+
+function validateInputs(amount) {
+  if (!Number.isFinite(amount) || amount <= 0) {
     alert('Please enter a valid amount');
-    return;
+    return false;
   }
 
   if (fromCurrencyEl.value === toCurrencyEl.value) {
     alert('Please select different currencies');
-    return;
+    return false;
   }
+
+  return true;
+}
+
+async function handleSubmit(e) {
+  e.preventDefault();
+  const numericAmount = Number(amountEl.value.trim());
+
+  const isValid = validateInputs(numericAmount);
+  if (!isValid) return;
 
   const from = fromCurrencyEl.value;
   const to = toCurrencyEl.value;
@@ -53,7 +73,7 @@ async function handleSubmit(e) {
     if (!rate) {
       throw new Error('Invalid currency code');
     }
-    displayResult(amount, from, to, rate);
+    displayResult(numericAmount, from, to, rate);
   } catch (error) {
     resultEl.innerHTML = `Error: ${error.message}`;
   }
@@ -63,15 +83,18 @@ async function fetchExchangeRate(fromCurrency) {
   const response = await fetch(
     `https://api.exchangerate-api.com/v4/latest/${fromCurrency}`,
   );
-  const data = await response.json();
-  if (!data) {
+  if (!response.ok) {
     throw new Error('Network response was not ok');
   }
+  const data = await response.json();
   return data.rates;
 }
 
+function calculateConversion(amount, rate) {
+  return (amount * rate).toFixed(2);
+}
 function displayResult(amount, from, to, rate) {
-  const converted = (amount * rate).toFixed(2);
+  const converted = calculateConversion(amount, rate);
   resultEl.innerHTML = `${amount} ${from} = ${converted} ${to}`;
 }
 
@@ -79,4 +102,5 @@ function swapCurrencies() {
   const temp = fromCurrencyEl.value;
   fromCurrencyEl.value = toCurrencyEl.value;
   toCurrencyEl.value = temp;
+  resultEl.innerHTML = '';
 }
