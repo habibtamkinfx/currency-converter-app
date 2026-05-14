@@ -13,7 +13,7 @@ It fetches real-time exchange rates using the ExchangeRate API and converts curr
 
 ## 📸 Preview
 
-![Preview](assets/screenshot.png)
+![Preview](assets/preview.png)
 
 ---
 
